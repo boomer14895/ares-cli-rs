@@ -1,4 +1,3 @@
-use std::fmt::Write;
 use std::fs::File;
 use std::io::{Error as IoError, ErrorKind};
 use std::path::Path;
@@ -144,7 +143,7 @@ impl InstallApp for DeviceSession {
         pb.finish_and_clear();
 
         result?;
-        return Ok(());
+        Ok(())
     }
 }
 
@@ -153,7 +152,7 @@ pub(crate) fn map_installer_message<F: Fn(String)>(
     expected: &Regex,
     progress: F,
 ) -> Option<Result<String, InstallError>> {
-    return match item {
+    match item {
         Ok(message) => match message.deserialize::<InstallResponse>() {
             Ok(resp) => {
                 if let Some(details) = resp.details {
@@ -177,7 +176,7 @@ pub(crate) fn map_installer_message<F: Fn(String)>(
             Err(e) => Some(Err(e.into())),
         },
         Err(e) => Some(Err(InstallError::Io(e))),
-    };
+    }
 }
 
 impl From<LunaError> for InstallError {

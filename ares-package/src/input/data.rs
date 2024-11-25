@@ -53,7 +53,7 @@ impl DataInfo {
         }
         let mut excludes: Option<Regex> = None;
         if !exclude_queries.is_empty() {
-            excludes = Regex::new(&format!("(?i){}", exclude_queries.join("|"))).ok();
+            excludes = Some(Regex::new(&format!("(?i){}", exclude_queries.join("|"))).unwrap());
         }
         for service_dir in service_dirs {
             let service_dir = service_dir.as_ref();
@@ -71,9 +71,9 @@ impl DataInfo {
             app: app_info.id.clone(),
             services: services.iter().map(|info| info.info.id.clone()).collect(),
         };
-        let mut package_info_data = serde_json::to_vec_pretty(&package_info).unwrap();
+        let mut package_info_data = serde_json::to_vec_pretty(&package_info)?;
         package_info_data.push(b'\n');
-        return Ok(DataInfo {
+        Ok(DataInfo {
             package: package_info,
             package_data: package_info_data,
             app: ComponentInfo {
@@ -83,7 +83,7 @@ impl DataInfo {
             },
             services,
             excludes,
-        });
+        })
     }
 }
 
@@ -111,9 +111,9 @@ impl Validation for DataInfo {
                 "Mixed architecture is not allowed",
             ));
         }
-        return Ok(ValidationInfo {
+        Ok(ValidationInfo {
             arch: archs.iter().next().cloned(),
             size: size_sum,
-        });
+        })
     }
 }

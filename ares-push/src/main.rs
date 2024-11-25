@@ -8,6 +8,7 @@ use walkdir::WalkDir;
 
 use ares_connection_lib::session::NewSession;
 use ares_device_lib::DeviceManager;
+use libssh_rs::OpenFlags;
 
 #[derive(Parser, Debug)]
 #[command(about)]
@@ -22,12 +23,14 @@ struct Cli {
     device: Option<String>,
     #[arg(
         value_name = "SOURCE",
-        help = "Path in the host machine, where files exist."
+        help = "Path in the host machine, where files exist.",
+        required = true
     )]
     source: Vec<PathBuf>,
     #[arg(
         value_name = "DESTINATION",
-        help = "Path in the DEVICE, where multiple files can be copied"
+        help = "Path in the DEVICE, where multiple files can be copied",
+        required = true
     )]
     destination: String,
 }
@@ -35,12 +38,10 @@ struct Cli {
 fn main() {
     let cli = Cli::parse();
     let manager = DeviceManager::default();
-    let device = manager.find_or_default(cli.device).unwrap();
-    if device.is_none() {
+    let Some(device) = manager.find_or_default(cli.device).unwrap() else {
         eprintln!("Device not found");
         exit(1);
-    }
-    let device = device.unwrap();
+    };
     let session = device.new_session().unwrap();
     let sftp = session.sftp().unwrap();
     for source in cli.source {
@@ -56,14 +57,16 @@ fn main() {
             match entry {
                 Ok(entry) => {
                     let file_type = entry.file_type();
-                    let dest_path = dest_base.join(entry.path().strip_prefix(source_prefix).unwrap());
+                    let dest_path =
+                        dest_base.join(entry.path().strip_prefix(source_prefix).unwrap());
                     if file_type.is_dir() {
                         println!(
                             "{} => {}",
                             entry.path().to_string_lossy(),
                             dest_path.to_slash_lossy()
                         );
-                        sftp.create_dir(dest_path.to_slash_lossy().as_ref(), 0o755).unwrap_or(());
+                        sftp.create_dir(dest_path.to_slash_lossy().as_ref(), 0o755)
+                            .unwrap_or(());
                     } else if file_type.is_file() {
                         println!(
                             "{} => {}",
@@ -72,7 +75,7 @@ fn main() {
                         );
                         let mut file = match sftp.open(
                             dest_path.to_slash_lossy().as_ref(),
-                            0o1101, /*O_WRONLY | O_CREAT | O_TRUNC*/
+                            OpenFlags::WRITE_ONLY | OpenFlags::CREATE | OpenFlags::TRUNCATE,
                             0o644,
                         ) {
                             Ok(file) => file,
